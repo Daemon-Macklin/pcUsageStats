@@ -11,78 +11,82 @@ import datetime
 
 # Method to control what happens
 def main():
-	print("Main Process")
-	data = {}
+    print("Main Process")
+    data = {}
 
-	# For ever
-	while(1):
-
-		# Try to get the data
-		try:
-			data = gatherData()
-		except Exception as e:
-			print(e)	
+    # For ever
+    while(1):
+                
+        # Try to get the data
+        try:
+            data = gatherData()
+        except Exception as e:
+            print(e)	
 		
-		# Try to insert the data
-		try:
-			dbInsert(data)
-		except Exception as e:
-			print(e)
+	# Try to insert the data
+        try:
+            dbInsert(data)
+        except Exception as e:
+            print(e)
 
-		# Wait 5 seconds
-		time.sleep(5)
+	# Wait 5 seconds
+        time.sleep(5)
 
 # Method to gather data
 def gatherData():
 
 	
-	print("Gathering Data")
-	data = {}
+    print("Gathering Data")
+    data = {}
 	
 	# Get the data
-	cpuPer = psutil.cpu_percent(interval=1)
-	virMem = psutil.virtual_memory()
-	swapMem = psutil.swap_memory()
+    cpuPer = psutil.cpu_percent(interval=1)
+    virMem = psutil.virtual_memory()
+    swapMem = psutil.swap_memory()
+    cpuTemp = psutil.sensors_temperatures()
+    cpuTemp = cpuTemp["k10temp"][0]
+    
+    # Extract data
+    data = {
+    	"cpuPer" : cpuPer,
+    	"virMemPer" : virMem.percent,
+    	"virMemUsed" : virMem.used,
+    	"swapMemPer" : swapMem.percent,
+    	"swapMemUsed" : swapMem.used,
+        "cupTemp": cpuTemp.current
+    }
 	
-	# Extract data
-	data = {
-		"cpuPer" : cpuPer,
-		"virMemPer" : virMem.percent,
-		"virMemUsed" : virMem.used,
-		"swapMemPer" : swapMem.percent,
-		"swapMemUsed" : swapMem.used
-	}
-	
-	# Return data
-	return data
+    # Return data
+    return data
 	
 
 # Method to insert the data
 def dbInsert(data):
-	print("Insert into db")
+    print("Insert into db")
 	
-	# Connect to database
-	client = InfluxDBClient(host ='localhost', port=8086, username='pcStatus', password='admin', database='pcUsageStats')
+    # Connect to database
+    client = InfluxDBClient(host ='localhost', port=8086, username='pcStatus', password='admin', database='pcUsageStats')
 	
 	# Create json object to insert
-	json_body = [
+    json_body = [
 		{
 		"measurement" : "recordings",
 		"tags": {
-		"time" : datetime.datetime.utcnow().isoformat(),
-			},
+                    "pc": "MyPc"
+                    },
 		"time": datetime.datetime.utcnow().isoformat(),
 		"fields" : {
 			}
 		}
 	]
 
-	# Add data to object
-	json_body[0]["fields"] = json.loads(json.dumps(data))
-	print(json_body)
-	
-	# Insert object into db
-	client.write_points(json_body)
+    # Add data to object
+    json_body[0]["fields"] = json.loads(json.dumps(data))
+    
+    print(json_body)
+
+    # Insert object into db
+    client.write_points(json_body)
 
 
 main()
